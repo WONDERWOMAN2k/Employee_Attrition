@@ -29,10 +29,15 @@ def load_data():
         st.error("🚨 Data file 'cleaned_employee_data.csv' not found! Please upload it.")
         return pd.DataFrame()
 
+# Load model and data
 model = load_model()
 full_df = load_data()
 
-# Title
+# Fallback for missing EmployeeID
+if not full_df.empty and "EmployeeID" not in full_df.columns:
+    full_df["EmployeeID"] = range(1, len(full_df) + 1)
+
+# Title and description
 st.title("🏢 Employee Attrition Prediction Dashboard")
 st.markdown("Analyze employee attrition, job satisfaction, and performance with real-time predictions and visual insights.")
 
@@ -72,53 +77,66 @@ elif menu == "High-Risk Employee List":
     st.header("🚨 High-Risk Employee List")
     st.markdown("Employees with risk score greater than 70% are considered high risk.")
 
+    required_cols = {"EmployeeID", "Department", "JobRole"}
     if not full_df.empty and model:
-        if "Risk Score (%)" not in full_df.columns:
-            proba = model.predict_proba(full_df)
-            full_df["Risk Score (%)"] = (proba[:, 1] * 100).round(2)
+        if required_cols.issubset(full_df.columns):
+            if "Risk Score (%)" not in full_df.columns:
+                proba = model.predict_proba(full_df)
+                full_df["Risk Score (%)"] = (proba[:, 1] * 100).round(2)
 
-        high_risk = full_df[full_df["Risk Score (%)"] >= 70]
-        st.dataframe(high_risk[["EmployeeID", "Department", "JobRole", "Risk Score (%)"]])
+            high_risk = full_df[full_df["Risk Score (%)"] >= 70]
+            st.dataframe(high_risk[["EmployeeID", "Department", "JobRole", "Risk Score (%)"]])
+        else:
+            st.warning("⚠️ Required columns missing for risk analysis.")
 
 # 3. Job Satisfaction & Performance
 elif menu == "Job Satisfaction & Performance":
     st.header("⭐ Job Satisfaction & Performance Analysis")
 
     if not full_df.empty:
-        st.subheader("Heatmap: Satisfaction vs Performance")
-        fig, ax = plt.subplots(figsize=(6,4))
-        sns.heatmap(pd.crosstab(full_df["JobSatisfaction"], full_df["PerformanceRating"]), annot=True, cmap="YlGnBu", ax=ax)
-        st.pyplot(fig)
+        if "JobSatisfaction" in full_df.columns and "PerformanceRating" in full_df.columns:
+            st.subheader("Heatmap: Satisfaction vs Performance")
+            fig, ax = plt.subplots(figsize=(6,4))
+            sns.heatmap(pd.crosstab(full_df["JobSatisfaction"], full_df["PerformanceRating"]),
+                        annot=True, cmap="YlGnBu", ax=ax)
+            st.pyplot(fig)
 
-        st.subheader("High Satisfaction + High Performance Employees")
-        top_employees = full_df[(full_df["JobSatisfaction"] >= 4) & (full_df["PerformanceRating"] >= 4)]
-        st.dataframe(top_employees[["EmployeeID", "JobRole", "JobSatisfaction", "PerformanceRating"]])
+            st.subheader("High Satisfaction + High Performance Employees")
+            top_employees = full_df[
+                (full_df["JobSatisfaction"] >= 4) & 
+                (full_df["PerformanceRating"] >= 4)
+            ]
+            st.dataframe(top_employees[["EmployeeID", "JobRole", "JobSatisfaction", "PerformanceRating"]])
+        else:
+            st.warning("⚠️ Columns 'JobSatisfaction' or 'PerformanceRating' are missing.")
 
 # 4. Side-by-Side Comparison
 elif menu == "Side-by-Side Comparison":
     st.header("🧍‍♂️🧍 Employee Comparison")
 
     if not full_df.empty:
-        employee_ids = full_df["EmployeeID"].unique()
-        emp1 = st.selectbox("Select Employee 1", employee_ids)
+        if "EmployeeID" in full_df.columns:
+            employee_ids = full_df["EmployeeID"].unique()
+            emp1 = st.selectbox("Select Employee 1", employee_ids)
 
-        # Prevent index error when only one employee
-        if len(employee_ids) > 1:
-            emp2 = st.selectbox("Select Employee 2", employee_ids, index=1)
+            if len(employee_ids) > 1:
+                emp2 = st.selectbox("Select Employee 2", employee_ids, index=1)
+            else:
+                emp2 = st.selectbox("Select Employee 2", employee_ids)
+
+            emp1_data = full_df[full_df["EmployeeID"] == emp1].T
+            emp2_data = full_df[full_df["EmployeeID"] == emp2].T
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader(f"👤 Employee {emp1}")
+                st.dataframe(emp1_data)
+
+            with col2:
+                st.subheader(f"👤 Employee {emp2}")
+                st.dataframe(emp2_data)
         else:
-            emp2 = st.selectbox("Select Employee 2", employee_ids)
-
-        emp1_data = full_df[full_df["EmployeeID"] == emp1].T
-        emp2_data = full_df[full_df["EmployeeID"] == emp2].T
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader(f"👤 Employee {emp1}")
-            st.dataframe(emp1_data)
-
-        with col2:
-            st.subheader(f"👤 Employee {emp2}")
-            st.dataframe(emp2_data)
+            st.warning("⚠️ 'EmployeeID' column not found for comparison.")
 
 # Footer
 st.markdown("---")
