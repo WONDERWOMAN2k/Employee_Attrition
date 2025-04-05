@@ -5,7 +5,6 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
-
 # Page configuration
 st.set_page_config(page_title="Employee Attrition Dashboard", layout="wide")
 
