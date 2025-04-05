@@ -1,3 +1,10 @@
+import pandas as pd
+import streamlit as st
+
+# Assuming 'df' is your DataFrame
+df = df.astype(str)
+
+st.dataframe(df)
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -33,9 +40,6 @@ def load_data():
 model = load_model()
 full_df = load_data()
 
-# Display dataset columns for debugging
-st.write("🧾 Columns in dataset:", full_df.columns.tolist())
-
 # Fallback for missing EmployeeID
 if not full_df.empty and "EmployeeID" not in full_df.columns:
     full_df["EmployeeID"] = range(1, len(full_df) + 1)
@@ -59,6 +63,15 @@ if menu == "Attrition Prediction":
 
     if uploaded_file and model:
         input_df = pd.read_csv(uploaded_file)
+
+        # Ensure consistent preprocessing
+        if 'Attrition' in input_df.columns:
+            input_df = input_df.drop(columns=['Attrition'])
+
+        # Align features with the model
+        model_feature_names = model.feature_names_in_
+        input_df = input_df.reindex(columns=model_feature_names, fill_value=0)
+
         try:
             prediction = model.predict(input_df)
             proba = model.predict_proba(input_df)
@@ -78,7 +91,7 @@ if menu == "Attrition Prediction":
 # 2. High-Risk Employee List
 elif menu == "High-Risk Employee List":
     st.header("🚨 High-Risk Employee List")
-    st.markdown("Employees with risk score greater than 70% are considered high risk.")
+    st.markdown("Employees with a risk score greater than 70% are considered high risk.")
 
     required_cols = {"EmployeeID", "Department", "JobRole"}
     if not full_df.empty and model:
