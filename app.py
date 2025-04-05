@@ -1,10 +1,3 @@
-import pandas as pd
-import streamlit as st
-
-# Assuming 'df' is your DataFrame
-df = df.astype(str)
-
-st.dataframe(df)
 import streamlit as st
 import pandas as pd
 import numpy as np
