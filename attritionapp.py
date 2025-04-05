@@ -33,6 +33,9 @@ def load_data():
 model = load_model()
 full_df = load_data()
 
+# Display dataset columns for debugging
+st.write("🧾 Columns in dataset:", full_df.columns.tolist())
+
 # Fallback for missing EmployeeID
 if not full_df.empty and "EmployeeID" not in full_df.columns:
     full_df["EmployeeID"] = range(1, len(full_df) + 1)
@@ -81,8 +84,11 @@ elif menu == "High-Risk Employee List":
     if not full_df.empty and model:
         if required_cols.issubset(full_df.columns):
             if "Risk Score (%)" not in full_df.columns:
-                proba = model.predict_proba(full_df)
-                full_df["Risk Score (%)"] = (proba[:, 1] * 100).round(2)
+                try:
+                    proba = model.predict_proba(full_df)
+                    full_df["Risk Score (%)"] = (proba[:, 1] * 100).round(2)
+                except Exception as e:
+                    st.error(f"⚠️ Error calculating risk score: {e}")
 
             high_risk = full_df[full_df["Risk Score (%)"] >= 70]
             st.dataframe(high_risk[["EmployeeID", "Department", "JobRole", "Risk Score (%)"]])
@@ -93,22 +99,22 @@ elif menu == "High-Risk Employee List":
 elif menu == "Job Satisfaction & Performance":
     st.header("⭐ Job Satisfaction & Performance Analysis")
 
-    if not full_df.empty:
-        if "JobSatisfaction" in full_df.columns and "PerformanceRating" in full_df.columns:
-            st.subheader("Heatmap: Satisfaction vs Performance")
-            fig, ax = plt.subplots(figsize=(6,4))
-            sns.heatmap(pd.crosstab(full_df["JobSatisfaction"], full_df["PerformanceRating"]),
-                        annot=True, cmap="YlGnBu", ax=ax)
-            st.pyplot(fig)
+    required_columns = ['JobSatisfaction', 'PerformanceRating']
+    if all(col in full_df.columns for col in required_columns):
+        st.subheader("Heatmap: Satisfaction vs Performance")
+        fig, ax = plt.subplots(figsize=(6,4))
+        sns.heatmap(pd.crosstab(full_df["JobSatisfaction"], full_df["PerformanceRating"]),
+                    annot=True, cmap="YlGnBu", ax=ax)
+        st.pyplot(fig)
 
-            st.subheader("High Satisfaction + High Performance Employees")
-            top_employees = full_df[
-                (full_df["JobSatisfaction"] >= 4) & 
-                (full_df["PerformanceRating"] >= 4)
-            ]
-            st.dataframe(top_employees[["EmployeeID", "JobRole", "JobSatisfaction", "PerformanceRating"]])
-        else:
-            st.warning("⚠️ Columns 'JobSatisfaction' or 'PerformanceRating' are missing.")
+        st.subheader("High Satisfaction + High Performance Employees")
+        top_employees = full_df[
+            (full_df["JobSatisfaction"] >= 4) & 
+            (full_df["PerformanceRating"] >= 4)
+        ]
+        st.dataframe(top_employees[["EmployeeID", "JobRole", "JobSatisfaction", "PerformanceRating"]])
+    else:
+        st.warning(f"⚠️ Missing one or more required columns: {required_columns}")
 
 # 4. Side-by-Side Comparison
 elif menu == "Side-by-Side Comparison":
